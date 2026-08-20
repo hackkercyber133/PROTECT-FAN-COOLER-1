@@ -84,7 +84,7 @@ class _ControllerPageState extends State<ControllerPage> {
   }
 
   void sendCommandMQTT(double volt) async {
-    if (mqttClient == null || !mqttClient!.connectionStatus!.connected) {
+    if (mqttClient == null || mqttClient!.connectionStatus!.state != MqttConnectionState.connected) {
       setState(() => status = "🔴 Offline");
       return;
     }
