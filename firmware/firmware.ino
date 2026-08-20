@@ -98,6 +98,21 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   StaticJsonDocument<128> doc;
   if (deserializeJson(doc, msg)) return;
   if (doc.containsKey("voltage")) applyVoltage(doc["voltage"]);
+  if (doc.containsKey("action") && String((const char*)doc["action"]) == "clear_cache") {
+    clearModuleCache();
+  }
+}
+
+// ===== BERSIHKAN "CACHE" MODUL =====
+// ESP32 tidak punya cache aplikasi seperti HP, jadi tombol ini mereset
+// state runtime yang tersimpan sementara di RAM: uptime dihitung ulang
+// dari 0 dan voltase dikembalikan ke default 5V. Kredensial WiFi yang
+// tersimpan di NVS (Preferences) TIDAK dihapus supaya ESP32 tidak
+// kehilangan koneksi WiFi rumah kamu.
+void clearModuleCache() {
+  applyVoltage(5.0);
+  startMillis = millis();
+  publishStatus();
 }
 
 // ===== REKONEKSI MQTT (non-blocking, tidak nge-freeze BLE/HTTP) =====
@@ -263,6 +278,9 @@ void loop() {
     StaticJsonDocument<128> doc;
     if (!deserializeJson(doc, bleCommand)) {
       if (doc.containsKey("voltage")) applyVoltage(doc["voltage"]);
+      if (doc.containsKey("action") && String((const char*)doc["action"]) == "clear_cache") {
+        clearModuleCache();
+      }
     }
     bleCommand = "";
   }
@@ -283,4 +301,3 @@ void loop() {
 
   delay(10);
 }
-
