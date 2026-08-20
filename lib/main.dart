@@ -57,11 +57,9 @@ class _ControllerPageState extends State<ControllerPage> {
   bool bleConnected = false;
 
   // ===== DATA VOLTASE =====
-  // Range voltase yang didukung aplikasi: 5V - 12V (kontinu, step 0.5V)
-  static const double minVolt = 5.0;
-  static const double maxVolt = 12.0;
+  // Hardware (board decoy PD3.1/QC3.0) cuma mendukung 3 level tegangan
+  // tetap secara fisik: 5V / 9V / 12V. Tidak ada mode kontinu.
   double setVolt = 5.0; // voltase yang sedang aktif/terkirim
-  double sliderVolt = 5.0; // nilai slider sebelum dikirim
   String uptime = "00:00:00";
   String status = "🔴 Offline";
 
@@ -74,7 +72,6 @@ class _ControllerPageState extends State<ControllerPage> {
   @override
   void initState() {
     super.initState();
-    sliderVolt = setVolt;
     if (connectionMode == "WiFi") connectMQTT();
     scanBLE();
   }
@@ -96,7 +93,6 @@ class _ControllerPageState extends State<ControllerPage> {
         var data = jsonDecode(payload);
         setState(() {
           setVolt = (data['setVoltage'] ?? setVolt).toDouble();
-          sliderVolt = setVolt;
           uptime = data['uptime'] ?? "00:00:00";
         });
       } catch (e) {}
@@ -123,7 +119,6 @@ class _ControllerPageState extends State<ControllerPage> {
     mqttClient!.publishMessage(cmdTopic, MqttQos.atLeastOnce, builder.payload!);
     setState(() {
       setVolt = volt;
-      sliderVolt = volt;
     });
   }
 
@@ -164,7 +159,6 @@ class _ControllerPageState extends State<ControllerPage> {
                 var data = jsonDecode(payload);
                 setState(() {
                   setVolt = (data['setVoltage'] ?? setVolt).toDouble();
-                  sliderVolt = setVolt;
                   uptime = data['uptime'] ?? "00:00:00";
                 });
               } catch (e) {}
@@ -194,7 +188,6 @@ class _ControllerPageState extends State<ControllerPage> {
             await characteristic.write(utf8.encode(jsonEncode({"voltage": volt})));
             setState(() {
               setVolt = volt;
-              sliderVolt = volt;
             });
             return;
           }
@@ -744,13 +737,11 @@ class _ControllerPageState extends State<ControllerPage> {
                       SizedBox(height: 16),
                       _voltageDisplayCard(),
                       SizedBox(height: 20),
-                      _sectionLabel("Preset Cepat"),
+                      _sectionLabel("Kontrol Voltase (5V - 12V)"),
                       SizedBox(height: 10),
                       _presetList(),
-                      SizedBox(height: 22),
-                      _sectionLabel("Voltase Custom (5V - 12V)"),
                       SizedBox(height: 10),
-                      _sliderCard(),
+                      _hardwareInfoCard(),
                       SizedBox(height: 22),
                       Row(
                         children: [
@@ -893,63 +884,25 @@ class _ControllerPageState extends State<ControllerPage> {
     );
   }
 
-  Widget _sliderCard() {
+  Widget _hardwareInfoCard() {
     return Container(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, 6),
-      decoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(14)),
-      child: Column(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("Geser untuk atur voltase", style: TextStyle(color: Colors.white54, fontSize: 12)),
-              Text("${sliderVolt.toStringAsFixed(1)} V",
-                  style: TextStyle(color: accentColor, fontSize: 16, fontWeight: FontWeight.bold)),
-            ],
-          ),
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: accentColor,
-              inactiveTrackColor: Colors.white12,
-              thumbColor: accentColor,
-              overlayColor: accentColor.withOpacity(0.2),
-              valueIndicatorColor: accentColor,
-            ),
-            child: Slider(
-              min: minVolt,
-              max: maxVolt,
-              divisions: ((maxVolt - minVolt) * 2).round(),
-              value: sliderVolt.clamp(minVolt, maxVolt),
-              label: "${sliderVolt.toStringAsFixed(1)}V",
-              onChanged: (v) => setState(() => sliderVolt = v),
-              onChangeEnd: (v) => sendVoltage(v),
+          Icon(Icons.info_outline, color: Colors.white38, size: 16),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              "Modul step-up yang dipakai hanya mendukung 3 level tegangan tetap (5V/9V/12V), jadi pemilihan voltase dilakukan lewat 3 tombol di atas.",
+              style: TextStyle(color: Colors.white38, fontSize: 11, height: 1.4),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.only(bottom: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("${minVolt.toStringAsFixed(0)}V", style: TextStyle(color: Colors.white38, fontSize: 11)),
-                Text("${maxVolt.toStringAsFixed(0)}V", style: TextStyle(color: Colors.white38, fontSize: 11)),
-              ],
-            ),
-          ),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => sendVoltage(sliderVolt),
-              icon: Icon(Icons.send, size: 16),
-              label: Text("Terapkan ${sliderVolt.toStringAsFixed(1)}V"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accentColor,
-                foregroundColor: Colors.black,
-                padding: EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-          ),
-          SizedBox(height: 12),
         ],
       ),
     );
