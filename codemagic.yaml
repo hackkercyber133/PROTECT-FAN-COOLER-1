@@ -1,0 +1,27 @@
+workflows:
+  android-workflow:
+    name: Fan Cooler Android Build
+    max_build_duration: 30
+    environment:
+      flutter: stable
+    scripts:
+      - name: Generate scaffold Flutter (folder android/) kalau belum ada
+        script: |
+          if [ ! -d "android" ]; then
+            echo "Scaffold android/ belum ada, generate otomatis pakai flutter create..."
+            cp pubspec.yaml /tmp/pubspec.yaml.bak
+            cp -r lib /tmp/lib.bak
+            flutter create --platforms=android --org com.coolerapp --project-name app_controller .
+            cp /tmp/pubspec.yaml.bak pubspec.yaml
+            rm -rf lib
+            cp -r /tmp/lib.bak lib
+          else
+            echo "Folder android/ sudah ada, skip generate."
+          fi
+      - name: Ambil dependency Flutter
+        script: flutter pub get
+      - name: Build APK
+        script: flutter build apk --release
+    artifacts:
+      - build/**/outputs/**/*.apk
+      - build/**/outputs/**/mapping.txt
