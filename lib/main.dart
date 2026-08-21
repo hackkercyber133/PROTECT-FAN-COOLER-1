@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:math';
 
-const String kAppVersion = "1.2.1";
+const String kAppVersion = "1.2.2";
 
 void main() => runApp(MyApp());
 
@@ -69,8 +69,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       );
     });
 
-    _mainCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 9000));
-    _loopCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 4200))..repeat();
+    _mainCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 15000));
+    _loopCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 5000))..repeat();
 
     _mainCtrl.forward();
     _mainCtrl.addStatusListener((s) {
@@ -845,6 +845,9 @@ class _ControllerPageState extends State<ControllerPage> {
                 Divider(color: Colors.white24, height: 20),
                 Text("Changelog", style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
                 SizedBox(height: 4),
+                Text("v1.2.2"),
+                Text("- Durasi animasi splash screen diperpanjang jadi 15 detik."),
+                SizedBox(height: 6),
                 Text("v1.2.1"),
                 Text("- Durasi animasi splash screen diperpanjang jadi 9 detik agar lebih terasa."),
                 SizedBox(height: 6),
