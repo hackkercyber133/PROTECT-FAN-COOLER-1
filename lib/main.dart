@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:math';
 
-const String kAppVersion = "1.2.0";
+const String kAppVersion = "1.2.1";
 
 void main() => runApp(MyApp());
 
@@ -69,13 +69,13 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       );
     });
 
-    _mainCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 5200));
-    _loopCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 3600))..repeat();
+    _mainCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 9000));
+    _loopCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 4200))..repeat();
 
     _mainCtrl.forward();
     _mainCtrl.addStatusListener((s) {
       if (s == AnimationStatus.completed) {
-        Future.delayed(const Duration(milliseconds: 150), _goToApp);
+        Future.delayed(const Duration(milliseconds: 400), _goToApp);
       }
     });
   }
@@ -845,6 +845,9 @@ class _ControllerPageState extends State<ControllerPage> {
                 Divider(color: Colors.white24, height: 20),
                 Text("Changelog", style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
                 SizedBox(height: 4),
+                Text("v1.2.1"),
+                Text("- Durasi animasi splash screen diperpanjang jadi 9 detik agar lebih terasa."),
+                SizedBox(height: 6),
                 Text("v1.2.0"),
                 Text("- Tambah animasi splash screen bergaya gaming (partikel, cincin energi, logo bercahaya)."),
                 Text("- Transisi halus dari splash ke halaman utama."),
