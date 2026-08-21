@@ -18,6 +18,10 @@ workflows:
           else
             echo "Folder android/ sudah ada, skip generate."
           fi
+      - name: Set nama aplikasi (app label)
+        script: |
+          sed -i 's/android:label="[^"]*"/android:label="Mod And TroubleShoot"/' android/app/src/main/AndroidManifest.xml
+          grep android:label android/app/src/main/AndroidManifest.xml
       - name: Ambil dependency Flutter
         script: flutter pub get
       - name: Build APK
