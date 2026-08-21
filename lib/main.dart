@@ -7,7 +7,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:math';
 
-const String kAppVersion = "1.2.2";
+const String kAppVersion = "1.2.5";
 
 void main() => runApp(MyApp());
 
@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Cooler Controller',
+      title: 'Mod And TroubleShoot',
       theme: ThemeData.dark(),
       home: SplashScreen(),
     );
@@ -128,7 +128,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
           final logoFade = stage(0.0, 0.30);
           final titleT = stage(0.35, 0.70, curve: Curves.easeOutCubic);
           final subtitleT = stage(0.50, 0.80, curve: Curves.easeOutCubic);
-          final barT = stage(0.55, 0.98, curve: Curves.easeInOutCubic);
+          final barT = stage(0.05, 0.97, curve: Curves.easeInOutSine);
           final flashT = stage(0.94, 1.0);
 
           return Stack(
@@ -845,6 +845,15 @@ class _ControllerPageState extends State<ControllerPage> {
                 Divider(color: Colors.white24, height: 20),
                 Text("Changelog", style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
                 SizedBox(height: 4),
+                Text("v1.2.5"),
+                Text("- Ganti nama aplikasi menjadi \"Mod And TroubleShoot\"."),
+                SizedBox(height: 6),
+                Text("v1.2.4"),
+                Text("- Progress bar loading kini mengisi hampir sepanjang durasi splash (jauh lebih lambat)."),
+                SizedBox(height: 6),
+                Text("v1.2.3"),
+                Text("- Progress bar loading dibuat mengisi lebih lambat & lebih halus (tidak buru-buru)."),
+                SizedBox(height: 6),
                 Text("v1.2.2"),
                 Text("- Durasi animasi splash screen diperpanjang jadi 15 detik."),
                 SizedBox(height: 6),
