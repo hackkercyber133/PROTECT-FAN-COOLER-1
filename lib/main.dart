@@ -5,6 +5,9 @@ import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'dart:convert';
 import 'dart:async';
+import 'dart:math';
+
+const String kAppVersion = "1.2.0";
 
 void main() => runApp(MyApp());
 
@@ -15,9 +18,375 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Cooler Controller',
       theme: ThemeData.dark(),
-      home: ControllerPage(),
+      home: SplashScreen(),
     );
   }
+}
+
+// =======================================================================
+// ===== SPLASH SCREEN — ANIMASI PEMBUKA BERGAYA GAMING (MLBB/FF STYLE) ===
+// =======================================================================
+class _SplashParticle {
+  final double x; // posisi horizontal awal (0..1)
+  final double speed; // faktor kecepatan naik
+  final double size; // ukuran partikel
+  final double phase; // offset siklus awal (0..1)
+  final double drift; // amplitudo goyangan horizontal
+
+  _SplashParticle({
+    required this.x,
+    required this.speed,
+    required this.size,
+    required this.phase,
+    required this.drift,
+  });
+}
+
+class SplashScreen extends StatefulWidget {
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+  // Controller utama: menjalankan urutan animasi satu-kali selama 5.2 detik.
+  late final AnimationController _mainCtrl;
+  // Controller loop: partikel, cincin energi, dan efek "shine" berjalan terus-menerus.
+  late final AnimationController _loopCtrl;
+  late final List<_SplashParticle> _particles;
+
+  @override
+  void initState() {
+    super.initState();
+
+    final rnd = Random(7);
+    _particles = List.generate(42, (i) {
+      return _SplashParticle(
+        x: rnd.nextDouble(),
+        speed: 0.35 + rnd.nextDouble() * 0.9,
+        size: 1.2 + rnd.nextDouble() * 2.6,
+        phase: rnd.nextDouble(),
+        drift: rnd.nextDouble() * 18 - 9,
+      );
+    });
+
+    _mainCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 5200));
+    _loopCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 3600))..repeat();
+
+    _mainCtrl.forward();
+    _mainCtrl.addStatusListener((s) {
+      if (s == AnimationStatus.completed) {
+        Future.delayed(const Duration(milliseconds: 150), _goToApp);
+      }
+    });
+  }
+
+  void _goToApp() {
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 650),
+        pageBuilder: (_, anim, __) => ControllerPage(),
+        transitionsBuilder: (_, anim, __, child) {
+          final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+          return FadeTransition(
+            opacity: curved,
+            child: ScaleTransition(
+              scale: Tween(begin: 1.06, end: 1.0).animate(curved),
+              child: child,
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _mainCtrl.dispose();
+    _loopCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const Color neon = Color(0xFF33F0FF);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF03040A),
+      body: AnimatedBuilder(
+        animation: Listenable.merge([_mainCtrl, _loopCtrl]),
+        builder: (context, _) {
+          final t = _mainCtrl.value.clamp(0.0, 1.0);
+          final loop = _loopCtrl.value;
+
+          double stage(double begin, double end, {Curve curve = Curves.linear}) {
+            return curve.transform(Interval(begin, end, curve: Curves.linear).transform(t)).clamp(0.0, 1.0);
+          }
+
+          final ringIntro = stage(0.0, 0.45, curve: Curves.easeOutExpo);
+          final logoScale = stage(0.05, 0.55, curve: Curves.elasticOut);
+          final logoFade = stage(0.0, 0.30);
+          final titleT = stage(0.35, 0.70, curve: Curves.easeOutCubic);
+          final subtitleT = stage(0.50, 0.80, curve: Curves.easeOutCubic);
+          final barT = stage(0.55, 0.98, curve: Curves.easeInOutCubic);
+          final flashT = stage(0.94, 1.0);
+
+          return Stack(
+            fit: StackFit.expand,
+            children: [
+              // latar gradasi radial gelap ala HUD game
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: Alignment(0, -0.1),
+                    radius: 1.15,
+                    colors: [Color(0xFF0C1B2A), Color(0xFF03040A)],
+                  ),
+                ),
+              ),
+              // partikel energi melayang naik
+              CustomPaint(
+                painter: _ParticlePainter(particles: _particles, loop: loop, color: neon),
+                size: Size.infinite,
+              ),
+              // cincin gelombang energi di belakang logo
+              Center(
+                child: CustomPaint(
+                  painter: _RingPainter(loopValue: loop, intro: ringIntro, color: neon),
+                  size: const Size(320, 320),
+                ),
+              ),
+              // bingkai hexagon berputar (efek "circuit")
+              Center(
+                child: Transform.rotate(
+                  angle: loop * 2 * pi,
+                  child: Opacity(
+                    opacity: (0.28 * ringIntro).clamp(0.0, 0.28),
+                    child: CustomPaint(
+                      painter: _HexPainter(color: neon),
+                      size: const Size(210, 210),
+                    ),
+                  ),
+                ),
+              ),
+              // konten utama: logo, judul, subjudul, progress bar
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Opacity(
+                      opacity: logoFade,
+                      child: Transform.scale(
+                        scale: 0.4 + 0.6 * logoScale,
+                        child: Container(
+                          width: 108,
+                          height: 108,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [neon.withOpacity(0.9), Colors.blueAccent.withOpacity(0.6)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: neon.withOpacity(0.5 + 0.25 * sin(loop * 2 * pi).abs()),
+                                blurRadius: 42,
+                                spreadRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.ac_unit, color: Colors.white, size: 56),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+                    Opacity(
+                      opacity: titleT,
+                      child: Transform.translate(
+                        offset: Offset(0, (1 - titleT) * 18),
+                        child: ShaderMask(
+                          shaderCallback: (bounds) {
+                            final sweep = (loop * 2.4) % 2.4 - 0.7;
+                            return LinearGradient(
+                              colors: const [Colors.white, Color(0xFFBFF7FF), Colors.white],
+                              stops: [
+                                (sweep - 0.25).clamp(0.0, 1.0),
+                                sweep.clamp(0.0, 1.0),
+                                (sweep + 0.25).clamp(0.0, 1.0),
+                              ],
+                            ).createShader(bounds);
+                          },
+                          child: const Text(
+                            'COOLER CONTROLLER',
+                            style: TextStyle(
+                              fontSize: 26,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 3,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Opacity(
+                      opacity: subtitleT,
+                      child: Text(
+                        'GAME-GRADE VOLTAGE ENGINE',
+                        style: TextStyle(
+                          fontSize: 11,
+                          letterSpacing: 4,
+                          color: neon.withOpacity(0.8),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 34),
+                    Opacity(
+                      opacity: barT > 0 ? 1 : 0,
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 190,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: Colors.white12,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: FractionallySizedBox(
+                                widthFactor: barT,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    gradient: LinearGradient(colors: [neon, Colors.blueAccent]),
+                                    boxShadow: [BoxShadow(color: neon.withOpacity(0.7), blurRadius: 8)],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'LOADING ${(barT * 100).toInt()}%',
+                            style: const TextStyle(color: Colors.white54, fontSize: 11, letterSpacing: 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // versi aplikasi di bagian bawah
+              Positioned(
+                bottom: 26,
+                left: 0,
+                right: 0,
+                child: Opacity(
+                  opacity: subtitleT,
+                  child: Center(
+                    child: Text(
+                      'v$kAppVersion',
+                      style: const TextStyle(color: Colors.white30, fontSize: 12, letterSpacing: 1),
+                    ),
+                  ),
+                ),
+              ),
+              // kilatan putih halus saat transisi keluar dari splash
+              if (flashT > 0)
+                IgnorePointer(
+                  child: Opacity(
+                    opacity: (flashT * 0.85).clamp(0.0, 0.85),
+                    child: Container(color: Colors.white),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ParticlePainter extends CustomPainter {
+  final List<_SplashParticle> particles;
+  final double loop;
+  final Color color;
+  _ParticlePainter({required this.particles, required this.loop, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint();
+    for (final p in particles) {
+      final progress = (loop + p.phase) % 1.0;
+      final y = size.height * (1 - progress);
+      final x = p.x * size.width + sin((progress + p.phase) * 2 * pi) * p.drift;
+      final opacity = sin(progress * pi).clamp(0.0, 1.0);
+      paint.color = color.withOpacity(0.55 * opacity);
+      canvas.drawCircle(Offset(x, y), p.size, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ParticlePainter oldDelegate) => true;
+}
+
+class _RingPainter extends CustomPainter {
+  final double loopValue;
+  final double intro;
+  final Color color;
+  _RingPainter({required this.loopValue, required this.intro, required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final maxRadius = size.width / 2;
+    for (int i = 0; i < 3; i++) {
+      final progress = (loopValue + i / 3) % 1.0;
+      final radius = maxRadius * progress * intro;
+      final opacity = ((1 - progress) * 0.5 * intro).clamp(0.0, 0.5);
+      final paint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6
+        ..color = color.withOpacity(opacity);
+      canvas.drawCircle(center, radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RingPainter oldDelegate) => true;
+}
+
+class _HexPainter extends CustomPainter {
+  final Color color;
+  _HexPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..color = color;
+    final center = size.center(Offset.zero);
+    final radius = size.width / 2;
+    final path = Path();
+    for (int i = 0; i < 6; i++) {
+      final angle = (pi / 3) * i - pi / 2;
+      final point = Offset(center.dx + radius * cos(angle), center.dy + radius * sin(angle));
+      if (i == 0) {
+        path.moveTo(point.dx, point.dy);
+      } else {
+        path.lineTo(point.dx, point.dy);
+      }
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _HexPainter oldDelegate) => false;
 }
 
 class ControllerPage extends StatefulWidget {
@@ -456,7 +825,7 @@ class _ControllerPageState extends State<ControllerPage> {
                 Text("Cooler Controller App",
                     style: TextStyle(color: accentColor, fontSize: 16, fontWeight: FontWeight.bold)),
                 SizedBox(height: 4),
-                Text("Version: 1.1.0"),
+                Text("Version: $kAppVersion"),
                 Divider(color: Colors.white24, height: 20),
                 Text("Developer", style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
                 SizedBox(height: 4),
@@ -476,6 +845,10 @@ class _ControllerPageState extends State<ControllerPage> {
                 Divider(color: Colors.white24, height: 20),
                 Text("Changelog", style: TextStyle(color: accentColor, fontWeight: FontWeight.bold)),
                 SizedBox(height: 4),
+                Text("v1.2.0"),
+                Text("- Tambah animasi splash screen bergaya gaming (partikel, cincin energi, logo bercahaya)."),
+                Text("- Transisi halus dari splash ke halaman utama."),
+                SizedBox(height: 6),
                 Text("v1.1.0"),
                 Text("- Desain ulang UI, rapi & responsif di semua resolusi."),
                 Text("- Tambah menu navigasi (drawer) untuk mode koneksi."),
